@@ -1,0 +1,195 @@
+# 作者入口手册
+
+## 自然语言作者协作
+
+作者只需描述角色、玩法、希望系统记住的内容、界面和风格。AI 不要求作者理解 Schema、字段类型、JSON Pointer、SDK、生命周期、正则或插件名，只追问尚未明确且会改变产品结果的选择。
+
+制作固定分为五组：MVU 数据模型、变量注入、全局美化、状态栏与舞台、发送/流式/完成行为。每组先给出简短的人类可读方案，得到作者确认后才修改对应入口；不提前实现后续组。全部完成后生成预览并进行最终视觉确认。具体对话提示和插件建议见 [AI_WORKFLOW.md](AI_WORKFLOW.md)。
+
+常规制作以本手册和 [API.md](API.md) 为准。API 未覆盖所需能力、验证错误无法解释、实际行为与文档不一致，或作者明确要求诊断/修改框架时，才检查完整平台规范与 `src/framework/`。全局技能若规定必须读取平台规范，仍遵守技能要求。
+
+## 数据执行顺序
+
+每次初始化、AI 更新、玩家操作或重置都固定执行：复制候选快照 → 应用操作 → `MVU_MODEL.derive` → 严格 Schema 校验 → 保存最终快照。派生或校验失败时不保存任何部分变化。
+
+`_` 开头的字段约定为 AI 只读派生字段；`$` 开头的字段默认不会通过变量注入入口发送给 AI。两项均由作者的数据设计负责保持一致。
+
+## 九个作者规则
+
+构建产物中每条“作者配置”正则都保留空行，并用“作者可填写区域”标记可修改范围。必要的函数外壳、模板根节点和主题映射位于标记外，不应删除。
+
+| 分组 | 作者入口 | 用途 |
+|---|---|---|
+| MVU 数据模型 | `initial-variables.json`、`model.js` | 按实际变量定义初始快照、Schema 和派生字段。 |
+| 变量注入 | `variable-inject.js` | 决定玩家每次发送时把哪些当前变量交给 AI。 |
+| 全局美化 | `theme.css` | 统一聊天页、状态栏和舞台的视觉语义。 |
+| 界面内容 | `status.html` + `status.js`、`stage.html` + `stage.js` | 编写逐回复冻结界面和会话长期界面。 |
+| 触发时机 | `before-send.js`、`stream.js`、`render.js` | 在发送前、流式回复中和完整回复后执行作者逻辑。 |
+
+这里的“九个”按构建后的作者配置正则计数：初始变量、变量结构、全局美化、变量注入、发送处理、回复状态栏、舞台、流式更新、完成更新。回复状态栏由 `status.html` 与 `status.js` 合成一条，舞台由 `stage.html` 与 `stage.js` 合成一条。`beginning.txt` 写入导入包的 `beginning`；`variable-rules.txt` 嵌入 `persona.txt` 后共同生成 `personality`。这三个文本文件都不计入正则条数。
+
+### 一、MVU 数据模型
+
+#### 初始变量：`initial-variables.json`
+
+初始变量是新对话的第一份完整快照。根据角色和玩法真正需要记录的内容设置字段、层级、类型和初始值，不保留无业务含义的示例字段。它必须是普通 JSON 对象，并且一次完整满足 `model.js` 的严格 Schema。
+
+开场 AI 消息使用这份初始快照；之后的 AI 更新、玩家操作、重置和回溯都以经过验证的快照为边界。新增、删除或改名字段时，必须同步检查 Schema、派生逻辑和 `variable-rules.txt`。
+
+#### 变量结构：`model.js`
+
+`schema(z)` 的参数是完整的 Zod 3.23.8 UMD API。可以使用对象、数组、枚举、联合、数值或字符串约束以及 `refine` / `superRefine` 等只校验能力；不得使用 `coerce`、`preprocess`、`transform`、`default`、`catch` 或会删除未知键的对象 Schema。根对象及需要封闭字段的嵌套对象使用 `.strict()`。Schema 只负责拒绝非法数据，不能转换、补充或删减数据。
+
+`derive(variables, context)` 接收候选快照的副本，只同步计算可由其他字段确定的派生值，不读取 DOM、SDK、存档或 MVU API。
+
+`context` 包含 `source`、`round`、`replyId`：
+
+- `source` 只会是 `initial`、`ai`、`player` 或 `reset`。
+- `round` 在开场快照为 `0`，第一条后续 AI 回复为 `1`，之后依次递增。
+- `replyId` 是该轮 AI 回复的服务端消息 ID 字符串；开场快照为 `null`。玩家操作沿用当前快照的 `round` 和 `replyId`。
+- 载入已有存档时不会再次调用 `derive`，而是用当前 Schema 严格校验每份已保存快照。
+
+初始变量、Schema、`derive` 与 `variable-rules.txt` 必须表达同一套字段和规则。
+
+### 二、变量注入
+
+`variable-inject.js` 在玩家每次发送时同步收到当前变量副本。作者可以按本轮 AI 真正需要的上下文筛选、重命名、组合或省略字段，再返回要随消息发送的字符串；它不修改玩家正文。
+
+推荐把普通 JSON 数据交给 `CARD.yaml.stringify(value)`：
+
+```js
+CARD_AUTHOR.inject.variables = function (variables) {
+  return CARD.yaml.stringify({
+    profile: variables.profile,
+    state: variables.state,
+  });
+};
+```
+
+`value` 只能包含 `null`、字符串、布尔值、有限数字、数组和普通对象。返回值必须是同步字符串，且不能自行包含 `[当前变量]` 或 `[/当前变量]`；框架会统一添加标记。默认模板会递归省略以 `$` 开头的字段，作者可以按实际变量重新定义筛选方式。
+
+变量系统未就绪、作者入口抛错、返回非字符串或返回保留标记时，本次发送会被阻止，并在 SDK 调试日志记录错误；框架不会改写或补救作者返回值。
+
+一次发送按以下顺序处理：
+
+```text
+清除草稿末尾的旧变量块 → beforeSend(draft) → 生成当前变量注入 → 拼接变量块 → 发送
+```
+
+### 三、全局美化
+
+`theme.css` 控制聊天页整体配色以及平台输入区、按钮、气泡和弹窗等组件的主题映射，不保存状态，也不编写交互逻辑。
+
+作者只修改两个“作者可填写区域”中的 10 个 `--card-*` 语义变量，分别提供默认深色和 `data-theme="light"` 浅色值，或默认浅色和 `data-theme="dark"` 深色值。作者区块之后的 `--chat-*` 平台映射和图标、气泡规则保持不动。状态栏和舞台 CSS 应复用 `--card-surface`、`--card-text`、`--card-accent` 等语义变量，不另建互不一致的配色体系。
+
+### 四、界面内容
+
+#### 回复状态栏：`status.html` + `status.js`
+
+状态栏属于单条 AI 回复。框架在该消息挂载时克隆 `status.html` 的唯一 `.card-status-root`，在完整回复和对应变量快照可用后调用一次：
+
+```js
+CARD_AUTHOR.status.render(root, { content, message, variables });
+```
+
+`content` 是该轮 AI 原文，`message` 是消息副本，`variables` 是该回复的冻结变量快照。空 AI 气泡、“消息生成”和省略号占位期间状态栏保持隐藏。后续变量变化不会改写已经显示的旧回复状态栏。
+
+`status.html` 中的 HTML 定义结构，内联 CSS 只修饰 `.card-status-root` 内的元素，`status.js` 负责根内动态列表和交互。HTML 文本或安全属性可以写 `[[变量.路径]]` 标量占位，具体规则如下：
+
+- 路径按英文句点分段；数组元素使用数字段，例如 `[[items.0.name]]`。字段名本身不能包含英文句点，空段以及 `__proto__`、`prototype`、`constructor` 段非法。
+- 最终值只能是字符串、有限数字或布尔值，并统一转成字符串；`null`、对象、数组和不存在的路径非法。
+- 占位符不能写进 `style` 或 `script` 文本，也不能写进 `on*`、`href`、`src`、`srcset`、`action`、`formaction` 属性。平台仍会删除作者自写 `data-*`。
+- 一次替换是整体操作；任一占位符非法时不替换任何占位符，状态栏继续隐藏。
+
+状态栏在 AI 消息挂载时以隐藏状态创建，收到有效的完整回复并取得该回复快照后才调用作者 `render`。同一挂载实例成功后不再刷新；消息卸载再挂载时会重新克隆并渲染。变量暂不可用或作者渲染抛错时保持隐藏，后续变量变更会再次尝试，重复错误只记录一次。
+
+#### 舞台：`stage.html` + `stage.js`
+
+舞台用于地图、角色面板、背包等需要在当前会话长期存在的大面积交互界面。框架在首次 `message:mount` 时把 `stage.html` 的唯一 `.card-stage-root` 克隆到 `sdk.stage.el()`，然后同步调用一次 `CARD_AUTHOR.stage.render(root)`。该入口只初始化根内 DOM 和绑定交互，不负责打开舞台，也不读取变量。
+
+这里不使用 `ready`：MMD 新页的首屏顺序是 `message:new → message:mount → message:done → ready`，而且晚注册的 `ready` 监听不会补发，无法可靠承担首屏舞台构建。`message:mount` 能覆盖首次已有消息和之后的会话重建。
+
+作者直接使用 MMD 新页 SDK 控制舞台：
+
+```js
+sdk.stage.open('full');
+sdk.stage.close();
+sdk.stage.visible();
+sdk.stage.el();
+```
+
+舞台不会自动打开。需要随完整回复刷新时，在全局 `CARD_AUTHOR.render` 中从 `sdk.stage.el()` 查询自己的 `.card-stage-root` 并更新。关闭再打开不会重新初始化；切换会话会移除旧根，新会话首次挂载消息时重新创建。作者初始化抛错时不重试、不降级。
+
+状态栏和舞台规则均按 HTML、CSS、JS 排列。平台会在 DOM 建立前抽取并执行脚本，因此作者脚本顶层不得访问 DOM；初始化只能写在各自的 `render` 入口内。
+
+### 五、触发时机
+
+完整交互链如下：
+
+```text
+玩家发送 → 发送处理 → 变量注入 → AI 流式更新（可重复） → MVU 提交 → 回复状态栏与完成更新
+```
+
+#### 发送处理：`before-send.js`
+
+`CARD_AUTHOR.inject.beforeSend(draft)` 在玩家消息发出前同步调用。`draft` 是已经移除末尾旧变量块的完整草稿；返回值是准备发送的完整玩家正文，必须是非空同步字符串，且不能包含变量块保留标记。这里可以整理、包裹或追加玩家正文，但不生成变量注入。
+
+#### 流式更新：`stream.js`
+
+`CARD_AUTHOR.stream({content, message})` 在当前 AI 回复正文变化时调用，同一回复可能调用多次。`content` 是当时的流式正文，`message` 是消息副本；此时变量尚未完成处理，因此不提供 `variables`。该入口适合进度提示和临时预览，不提交变量，也不渲染依赖最终变量的内容。
+
+作者入口的返回值会被忽略。入口抛错时框架只写 SDK 调试日志；该次调用结束，之后的流式或完成事件仍会继续调用作者入口。
+
+#### 完成更新：`render.js`
+
+`CARD_AUTHOR.render({content, message, variables, variableError})` 在完整 AI 回复经过 MVU 处理后调用。`variables` 通常是该回复提交后的最终快照；如果该轮变量更新失败，则提供当前已提交快照，并在 `variableError` 中给出错误文本。
+
+成功时 payload 不包含 `variableError` 属性。若回复快照暂不可用，框架会等待变量变更后重试；连当前已提交快照也无法读取时，本次不调用作者 `render`，只记录错误。
+
+该入口适合更新舞台或其他跨消息长期界面。逐回复冻结内容写在状态栏入口，不要在这里重新读取或改写旧消息气泡。
+
+## 公共接口
+
+主动调用前先阅读 [API.md](API.md)。作者公开面仅包含：
+
+```js
+CARD.messages.at(index, role);
+
+CARD.variables.current();
+CARD.variables.reply(index);
+
+MVU.replace(path, value);
+MVU.delta(path, value);
+MVU.insert(path, value);
+MVU.remove(path);
+```
+
+入口已经提供的数据直接使用：变量注入入口已有当前变量，状态栏与完成更新入口已有对应的 `variables`，不重复读取。历史正文用 `CARD.messages.at(index, role)` 按角色读取；历史变量用同一 AI 消息序列的 `CARD.variables.reply(index)` 读取。
+
+## MMD 新页约束
+
+- 作者脚本在 DOM 建立前执行，顶层不得查询或写入 DOM。
+- 气泡内绑定只能在 `message:mount` 回调中同步取得引用；不得跨 `await` 或定时器后重新查询气泡。
+- `sdk.on` 只能在脚本体注册，不能嵌套在 `message:mount` 中。
+- `document.currentScript` 恒为 `null`；用固定 class/id 和事件提供的消息作用域定位。
+- 禁止 `img onerror`、teapot、Shadow DOM 和作者自写 `data-*`。作者元素使用自有 class/id。
+- 长期界面放 `sdk.stage`；气泡状态栏只保存该回复的冻结视图。
+- 作者 CSS 不写 `html`、`body`、`:root` 或全局 `*`，平台换肤写在 `[data-chat="root"]`。
+- 不直接读取消息正文 DOM；流式和完成内容分别使用事件载荷的 `content`。
+- `sdk.message.*`、`sdk.save.*` 等 Promise 调用必须显式处理失败。
+
+## 开场白、Persona 与更新协议
+
+`beginning.txt` 是玩家看到的开场 AI 消息。构建时会去掉文件首尾空白并写入导入包的 `beginning`，长度不得超过 4000 字符。它使用初始变量快照，不解析也不需要 `<变量更新>` 块；状态栏和舞台触发串由构建器固定写入 `statusbar`，不需要放进开场白。
+
+在 `persona.txt` 填写角色设定，在 `variable-rules.txt` 逐字段描述语义与更新条件。不要改掉 `{{VARIABLE_RULES}}` 占位；构建器要求它恰好出现一次。
+
+通用协议使用 JSON Pointer 和 `replace`、`delta`、`insert`、`remove` 四种操作。Schema 是最终边界，提示词描述必须与 Schema、初始变量和 `derive` 完全一致。
+
+## 构建门禁
+
+构建会直接拒绝：缺少源文件、非法配置、重复插件、未知插件、非 slash 匹配式、可命中空串的正则、重复匹配式、触发标记交叉污染、错误模板根、错误 JSON 键、规则名称超过 20 字、匹配式超过 1000 字或替换内容达到 20000 字。
+
+修改完成后依次运行 `npm test`、`npm run build`。让 `tavern-mmd` 对正式产物执行 `validate.py --platform mmdsandbox`。
+
+标准沙盒仿真不暴露真实站内部的消息 Pinia store，而 MVU 的回溯和历史快照需要该 store。运行 `npm run preview:fixture` 会生成只供本地仿真的 `工作/mvu-preview-fixture.json`，其中额外加入测试消息仓；让 `tavern-mmd` 用该文件生成 chat/thin-preview 全景预览。正式导入始终使用 `output/mvu-regex.json`，测试适配器绝不能导入真站。

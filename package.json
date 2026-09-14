@@ -1,0 +1,14 @@
+{
+  "name": "mmd-generic-mvu",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MMD 新聊天页通用 CARD + MVU 作者框架",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "preview:fixture": "node scripts/build-skill-preview.cjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

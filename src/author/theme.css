@@ -1,0 +1,41 @@
+/* 作者主题：只编辑两个作者区块中的 --card-* 变量。 */
+/* ===== 作者可填写区域：主题变量开始 ===== */
+
+[data-chat="root"]{
+--card-bg:#171717;
+--card-surface:#242424;
+--card-text:#f2f2f2;
+--card-muted:#a3a3a3;
+--card-border:#404040;
+--card-accent:#737373;
+--card-highlight:#d4d4d4;
+--card-input:#262626;
+--card-shadow-color:rgba(0,0,0,.35);
+--card-icon-filter:brightness(0) invert(1);
+}
+
+[data-chat="root"][data-theme="light"]{
+--card-bg:#f5f5f5;
+--card-surface:#fff;
+--card-text:#262626;
+--card-muted:#737373;
+--card-border:#d4d4d4;
+--card-accent:#525252;
+--card-highlight:#404040;
+--card-input:#fff;
+--card-shadow-color:rgba(0,0,0,.12);
+--card-icon-filter:brightness(0) saturate(100%);
+}
+
+/* ===== 作者可填写区域：主题变量结束 ===== */
+
+/* 框架映射：不要在作者区块外声明 --card-*。 */
+[data-chat="root"][data-theme]{
+--chat-bg:var(--card-bg);--chat-surface:var(--card-surface);--chat-text:var(--card-text);--chat-text-muted:var(--card-muted);--chat-border:var(--card-border);--chat-accent:var(--card-accent);--chat-bubble-user-bg:var(--card-accent);--chat-bubble-ai-bg:var(--card-surface);--chat-bubble-text:var(--chat-text);--chat-share-pick-bg:var(--chat-surface);--chat-composer-bg:var(--chat-bg);--chat-composer-text:var(--chat-text);--chat-shortcut-bg:var(--chat-surface);--chat-shortcut-text:var(--chat-text);--chat-input-bg:var(--card-input);--chat-input-text:var(--chat-text);--chat-input-placeholder:var(--chat-text-muted);--chat-input-border:var(--chat-border);--chat-modal-bg:var(--chat-bg);--chat-modal-surface:var(--chat-surface);--chat-modal-text:var(--chat-text);--chat-modal-muted:var(--chat-text-muted);--chat-modal-accent:var(--chat-accent);--chat-modal-input-bg:var(--card-input);--chat-modal-input-text:var(--chat-text);--chat-modal-cancel-bg:var(--chat-surface);--chat-modal-btn-bg:var(--chat-surface);--chat-modal-btn-border:var(--chat-border);--chat-more-item-bg:var(--chat-modal-surface)
+}
+
+:is([data-chat="header-back"],[data-chat="header-actions"] [data-action],[data-chat="assistant"],[data-chat="send"],[data-chat="instruction-back"],[data-action="more"])>img,:is([data-chat="message-actions"],[data-chat="more-panel"]) [data-action]>img{filter:var(--card-icon-filter)!important;opacity:1}
+[data-chat="message"][data-from="ai"] [data-chat="message-body"] :is(.card-quote,font[color="#dc8333" i]){color:var(--card-highlight)!important;-webkit-text-fill-color:var(--card-highlight)!important;font-weight:700}
+[data-chat="message"][data-from="user"] [data-chat="message-body"]{color:#fff}
+[data-chat="message"][data-from="ai"] [data-chat="message-body"]{box-shadow:0 2px 5px var(--card-shadow-color)}
+[data-slot="statusbar"]{flex-shrink:0}

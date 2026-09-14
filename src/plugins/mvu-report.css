@@ -1,0 +1,13 @@
+.mvu-report{margin:10px 0;border:1px solid var(--card-border);border-radius:10px;background:var(--card-surface);color:var(--card-text);font:inherit;line-height:1.6;white-space:normal;overflow-wrap:anywhere;min-width:0;max-width:100%;box-shadow:0 2px 6px var(--card-shadow-color)}
+.mvu-report>summary{cursor:pointer;padding:10px 12px;font-weight:600}
+.mvu-report.is-success,.mvu-report.is-empty{border-left:4px solid #398a64}
+.mvu-report.is-error{border-left:4px solid #c57b29}
+.mvu-report.is-waiting{border-left:4px solid var(--card-muted)}
+.mvu-report-body{padding:0 12px 12px;border-top:1px solid var(--card-border)}
+.mvu-report-body li{padding:5px 0;white-space:pre-wrap}
+.mvu-report-body ol,.mvu-report-body ul{padding-left:24px}
+.mvu-report-body p{margin:8px 0}
+.mvu-report-body small{color:var(--card-muted)}
+.mvu-report-problem{border-left:3px solid #c57b29;padding-left:8px!important}
+.mvu-report-list{list-style:none;padding-left:0!important}
+.mvu-report-list>li{margin:10px 0;padding:8px;border-bottom:1px solid var(--card-border)}

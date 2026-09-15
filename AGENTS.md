@@ -12,4 +12,4 @@
 - 默认推荐 `report`、`user-view`、`prune`；作者可明确关闭。`manager` 仅在需要手动查看、修改或重置变量时提出。
 - 代码保持简洁，不添加兜底、兼容、迁移、默认补值或跨平台分支。
 - 创建或修改文件后立即更新 `main.md`；完成步骤后立即勾选 `plan.md`。
-- 交付前必须运行 `npm test`、`npm run build`、`npm run preview:fixture` 和 MMD 新页校验。
+- 交付前只运行 `npm run build`、JSON 语法检查和 MMD 新页校验；作者明确要求时才生成预览，不执行仿真页面验证。

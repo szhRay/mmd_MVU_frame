@@ -20,7 +20,6 @@
 - `src/framework/` — 框架实现；仅在明确修复框架时修改。
 - `src/plugins/` — 四个可选插件。
 - `scripts/` — 构建与本地预览工具。
-- `tests/` — 构建和运行时测试。
 - `output/` — 构建产物，不进入 Git 源码提交；发布时作为 GitHub Release 附件。
 - `工作/` — 本地仿真、截图和最新验证记录。
 
@@ -32,3 +31,4 @@
 - 作者只使用新页 SDK、稳定的 `[data-chat]` / `[data-slot]` 和自有 class/id。
 - 顶层 `statusbar` 经正则替换后进入 `[data-slot="statusbar"]`；功能栏按需另建文件、独立规则和唯一标记，不属于默认九个作者规则。`status.html`、`status.js` 只保存逐回复快照，舞台仅作可选高级界面。
 - 变量更新规则使用紧凑中文 YAML；只写有实际用途、不能可靠推导且需要额外约束的字段，完整 persona 不得超过 10000 字符。
+- 四个插件使用新页消息事件与 MVU 内部事件；`manager` 通过独立 `statusbar` 标记提供功能栏入口。

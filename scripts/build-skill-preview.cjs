@@ -3,10 +3,10 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const card = JSON.parse(fs.readFileSync(path.join(root, 'output', 'mvu-regex.json'), 'utf8'));
-const source = fs.readFileSync(path.join(root, 'tests', 'fixtures', 'preview-store.js'), 'utf8').trim();
+const source = fs.readFileSync(path.join(root, 'scripts', 'preview-store.js'), 'utf8').trim();
 card.regex_scripts.unshift({
   id: -1,
-  scriptName: '测试·消息仓适配器',
+  scriptName: '仿真·消息仓适配器',
   findRegex: '/__MVU_TEST_STORE__/',
   replaceString: '<script>\n' + source + '\n</script>',
 });

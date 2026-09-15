@@ -66,6 +66,8 @@ function frameworkDefinitions(root) {
   if (!initial || typeof initial !== 'object' || Array.isArray(initial)) throw new Error('initial-variables.json 必须是对象');
   const statusMarkup = compactMarkup(a('status.html'));
   const stageMarkup = compactMarkup(a('stage.html'));
+  const statusRoot = sourceRoot(statusMarkup, 'card-status-source');
+  const stageRoot = sourceRoot(stageMarkup, 'card-stage-source');
   const authorStatus = statusMarkup + '\n\n' + script(a('status.js'));
   const authorStage = stageMarkup + '\n\n' + script(a('stage.js'));
 
@@ -88,18 +90,19 @@ function frameworkDefinitions(root) {
       { title: '作者配置·全局美化', find: '/__MVU_AUTHOR_THEME__/', sentinel: '__MVU_AUTHOR_THEME__', content: style(a('theme.css')) },
       { title: '作者配置·变量注入', find: '/__MVU_AUTHOR_INJECT__/', sentinel: '__MVU_AUTHOR_INJECT__', content: script(a('variable-inject.js')) },
       { title: '作者配置·发送处理', find: '/__MVU_AUTHOR_SEND__/', sentinel: '__MVU_AUTHOR_SEND__', content: script(a('before-send.js')) },
-      { title: '作者配置·回复状态栏', find: '/{{card-status-source}}/', content: authorStatus },
-      { title: '作者配置·舞台', find: '/{{card-stage-source}}/', content: authorStage },
+      { title: '作者配置·回复状态栏', find: '/{{card-status-source}}/', marker: '{{card-status-source}}', source: statusRoot, content: authorStatus },
+      { title: '作者配置·舞台', find: '/{{card-stage-source}}/', marker: '{{card-stage-source}}', source: stageRoot, content: authorStage },
       { title: '作者配置·流式更新', find: '/__MVU_AUTHOR_STREAM__/', sentinel: '__MVU_AUTHOR_STREAM__', content: script(a('stream.js')) },
       { title: '作者配置·完成更新', find: '/__MVU_AUTHOR_RENDER__/', sentinel: '__MVU_AUTHOR_RENDER__', content: script(a('render.js')) },
     ],
-    statusRoot: sourceRoot(statusMarkup, 'card-status-source'),
-    stageRoot: sourceRoot(stageMarkup, 'card-stage-source'),
+    statusRoot,
+    stageRoot,
   };
 }
 
 function pluginDefinitions(root, selected) {
   const p = name => read(root, 'src/plugins/' + name);
+  const managerMarkup = sourceRoot(compactMarkup(p('mvu-manager.html')), 'mvu-manager-root');
   const definitions = {
     report: {
       title: '插件·更新报告', find: '/<变量更新>[\\s\\S]*?<\\/变量更新>/g',
@@ -107,11 +110,11 @@ function pluginDefinitions(root, selected) {
     },
     'user-view': {
       title: '插件·玩家变量折叠', find: '/__MVU_PLUGIN_USER_VIEW__/', sentinel: '__MVU_PLUGIN_USER_VIEW__',
-      content: style('.mvu-user-text,.mvu-user-variables pre{white-space:pre-wrap;overflow-wrap:anywhere;min-width:0;max-width:100%}.mvu-user-variables{white-space:normal;color:inherit;margin-top:8px}.mvu-user-variables summary{cursor:pointer;color:inherit}.mvu-user-variables pre{font:inherit;margin:8px 0}') + script(p('mvu-user-view.js')),
+      content: style(p('mvu-user-view.css')) + script(p('mvu-user-view.js')),
     },
     manager: {
-      title: '插件·变量管理器', find: '/__MVU_PLUGIN_MANAGER__/', sentinel: '__MVU_PLUGIN_MANAGER__',
-      content: script(p('mvu-manager.js').replace('__MVU_MANAGER_STYLE__', JSON.stringify(p('mvu-manager.css')))),
+      title: '插件·变量管理器', find: '/{{mvu-manager}}/', marker: '{{mvu-manager}}', source: managerMarkup,
+      content: managerMarkup + '\n\n' + style(p('mvu-manager.css')) + script(p('mvu-manager.js')),
     },
     prune: {
       title: '插件·旧变量清理', find: '/__MVU_PLUGIN_PRUNE__/', sentinel: '__MVU_PLUGIN_PRUNE__', content: script(p('mvu-prune.js')),
@@ -137,16 +140,19 @@ function validateDefinitions(definitions, statusbar) {
     }
     if (statusbar.includes(item.sentinel)) throw new Error('脚本哨兵不能出现在 statusbar：' + item.sentinel);
   }
-  for (const marker of ['{{card-status-source}}', '{{card-stage-source}}']) {
-    if (statusbar.split(marker).length !== 2) throw new Error('statusbar 必须恰好包含一次 ' + marker);
-    for (const item of definitions) if (!item.find.includes(marker) && item.content.includes(marker)) throw new Error('可见触发标记交叉污染：' + marker);
+  for (const item of definitions.filter(value => value.marker)) {
+    if (statusbar.split(item.marker).length !== 2) throw new Error('statusbar 必须恰好包含一次 ' + item.marker);
+    if (!item.find.includes(item.marker)) throw new Error('可见触发标记与匹配式不一致：' + item.marker);
+    for (const other of definitions) if (other !== item && other.content.includes(item.marker)) throw new Error('可见触发标记交叉污染：' + item.marker);
   }
 }
 
 function makeCard(root, selected) {
   const { definitions, statusRoot, stageRoot } = frameworkDefinitions(root);
   definitions.push(...pluginDefinitions(root, selected));
-  const statusbar = '{{card-status-source}}{{card-stage-source}}';
+  const visible = definitions.filter(item => item.marker);
+  const statusbar = visible.map(item => item.marker).join('');
+  const statusSources = visible.map(item => ({ marker: item.marker, source: item.source }));
   validateDefinitions(definitions, statusbar);
   const personaTemplate = read(root, 'src/author/persona.txt');
   if (personaTemplate.split('{{VARIABLE_RULES}}').length !== 2) throw new Error('persona.txt 必须恰好包含一次 {{VARIABLE_RULES}}');
@@ -159,17 +165,18 @@ function makeCard(root, selected) {
   const card = { chatVersion: 1, pageDepth: 2, statusbar, beginning, personality, regex_scripts };
   if (JSON.stringify(Object.keys(card)) !== JSON.stringify(TOP_KEYS)) throw new Error('导入包顶层键错误');
   for (const rule of regex_scripts) if (JSON.stringify(Object.keys(rule)) !== JSON.stringify(RULE_KEYS)) throw new Error('规则键错误：' + rule.scriptName);
-  return { card, statusRoot, stageRoot };
+  return { card, statusRoot, stageRoot, statusSources };
 }
 
-function makePreview(card, statusRoot, stageRoot) {
+function makePreview(card, statusSources) {
   const styles = card.regex_scripts.flatMap(rule => [...rule.replaceString.matchAll(/<style>([\s\S]*?)<\/style>/gi)].map(match => match[1])).join('\n');
   const scripts = card.regex_scripts.flatMap(rule => [...rule.replaceString.matchAll(/<script>([\s\S]*?)<\/script>/gi)].map(match => match[1]));
-  const statusbar = card.statusbar.replace('{{card-status-source}}', statusRoot).replace('{{card-stage-source}}', stageRoot);
+  let statusbar = card.statusbar;
+  for (const item of statusSources) statusbar = statusbar.replace(item.marker, item.source);
   const fixture = `const handlers=new Map();window.emit=(name,msg)=>{for(const fn of handlers.get(name)||[])fn(msg)};
 window.rows=[{key:'greeting',from:'ai',serverId:null,content:${JSON.stringify(card.beginning)}}];
-window.testStore={loaded:true,hasMore:false,get keys(){return rows.map(row=>row.key)},getByKey(key){return rows.find(row=>row.key===key)}};
-document.documentElement.__vue_app__={_context:{provides:{pinia:{_s:new Map([['messages',testStore]])}}}};
+window.previewStore={loaded:true,hasMore:false,get keys(){return rows.map(row=>row.key)},getByKey(key){return rows.find(row=>row.key===key)}};
+document.documentElement.__vue_app__={_context:{provides:{pinia:{_s:new Map([['messages',previewStore]])}}}};
 let stored,stageVisible=false;window.sdk={on(name,fn){if(!handlers.has(name))handlers.set(name,[]);handlers.get(name).push(fn)},debug:{log(...args){console.log(...args)}},save:{get(){return stored},async set(key,value){stored=structuredClone(value)}},stage:{el(){return document.getElementById('stage')},open(){stageVisible=true;this.el().hidden=false},close(){stageVisible=false;this.el().hidden=true},visible(){return stageVisible}},input:{set(text){document.querySelector('[data-chat="input"]').value=text},get(){return document.querySelector('[data-chat="input"]').value},clear(){document.querySelector('[data-chat="input"]').value=''}},message:{async edit(){},async send(){}}};`;
   return '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>通用 MVU 本地预览</title><style>:root{--rpx:1px}body{margin:0}[data-chat="root"]{min-height:100vh;padding-bottom:72px}[data-chat="message-body"]{margin:16px;padding:14px;white-space:pre-line}#stage{position:fixed;inset:0;z-index:3000}[data-chat="composer"]{position:fixed;inset:auto 0 0;display:flex;padding:10px}textarea{flex:1}' + styles + '</style><div data-chat="root" data-theme="dark"><header data-chat="header">通用 MVU 本地预览</header><div data-slot="statusbar">' + statusbar + '</div><main data-chat="messages"><article data-chat="message" data-from="ai"><div data-chat="message-body">' + escapeHtml(card.beginning) + '</div></article></main><div data-slot="right"></div><div id="stage" hidden></div><footer data-chat="composer"><textarea data-chat="input"></textarea><button data-chat="send">发送</button></footer></div><script>' + fixture + '</script>' + scripts.map(value => '<script>' + value + '</script>').join('') + '<script>emit("message:mount",{role:"ai",id:"greeting",serverId:null,content:rows[0].content});emit("message:done",{role:"ai",id:"greeting",serverId:null,content:rows[0].content});emit("ready")</script></html>';
 }
@@ -180,11 +187,11 @@ function serializeJson(value) {
 
 function buildProject({ root, plugins, outDir }) {
   const selected = strictConfig({ plugins });
-  const { card, statusRoot, stageRoot } = makeCard(root, selected);
+  const { card, statusSources } = makeCard(root, selected);
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(path.join(outDir, 'mvu-regex.json'), serializeJson(card));
   fs.writeFileSync(path.join(outDir, 'mvu-persona.txt'), card.personality + '\n');
-  fs.writeFileSync(path.join(outDir, 'mvu-preview.html'), makePreview(card, statusRoot, stageRoot));
+  fs.writeFileSync(path.join(outDir, 'mvu-preview.html'), makePreview(card, statusSources));
   return card;
 }
 

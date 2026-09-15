@@ -39,7 +39,7 @@
 | 能力 | 参数 | 返回 | 类型 | 用途与限制 |
 |---|---|---|---|---|
 | `sdk.message.send(text?)` | `text?: string` | `Promise<void>` | async | 以玩家身份发送指定文字；省略时发送当前草稿。必须在用户点击的当帧直接调用，调用前不能先 `await`。 |
-| `sdk.message.edit(id, text)` | `id: string, text: string` | `Promise<void>` | async | 编辑服务端已识别的消息；只使用非空 `message.serverId`。 |
+| `sdk.message.edit(id, text)` | `id: string, text: string` | `Promise<void>` | async | 编辑消息；先以非空 `message.serverId` 确认消息可编辑，再传该消息的本地 `message.id`。 |
 
 两项都必须处理 Promise 失败。不要在 `message:done` 中无条件发送，否则会形成自动对话循环。
 
@@ -120,14 +120,14 @@ Promise 能力至少记录 `error.code`；同步读取按契约用 `try/catch`�
 
 ```js
 {
-  id,        // 框架内部使用的本地 ID
-  serverId,  // 服务端消息 ID；尚无服务端身份时为 null
+  id,        // 本地消息 ID；项目实测用于 sdk.message.edit
+  serverId,  // 服务端消息 ID；为 null 时消息不可编辑
   role,      // "ai" 或 "user"
   content,   // 消息原文
 }
 ```
 
-`id` 仅用于描述消息身份，作者不按该字段查询消息。
+`id` 用于当前已加载消息的身份和编辑调用，不作为跨重载持久身份；需要长期关联消息时使用非空 `serverId`。
 
 ### `CARD.messages.at(index, role)`
 

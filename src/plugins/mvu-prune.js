@@ -14,7 +14,7 @@
 
   // 触发契约：业务触发走 card:variables + MVU.info()，不监听消息时序事件。
   // slotId 变化=新会话只立基线；round 回退=回溯只跟随；round 增加=新一轮已提交。
-  document.addEventListener('card:variables', function () {
+  function update() {
     if (stopped) return;
     try {
       const info = MVU.info();
@@ -33,7 +33,15 @@
     } catch (error) {
       sdk.debug.log('旧变量清理失败', error.code, error.message);
     }
-  });
+  }
 
-  sdk.on('dispose', function () { stopped = true; });
+  function switchConversation() { slot = null; round = 0; }
+  function dispose() {
+    stopped = true;
+    document.removeEventListener('card:variables', update);
+  }
+
+  document.addEventListener('card:variables', update);
+  sdk.on('conversation:switch', switchConversation);
+  sdk.on('dispose', dispose);
 })();

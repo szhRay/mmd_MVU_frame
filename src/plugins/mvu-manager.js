@@ -1,7 +1,6 @@
 (function () {
   if (window.MVU_MANAGER) return;
-  const styleText = __MVU_MANAGER_STYLE__;
-  let launcher, style;
+  let root, launcher;
   let panel, status, notice, tree, value, baseline, available = false, refreshing = false, disposed = false, activeEditor;
   let preview, previewText, previewStatus, variablePage, recalculate;
   const expanded = new Map();
@@ -131,42 +130,44 @@
   }
   function initialize() {
     if (panel) return;
-    panel = make('section'); panel.className = 'mvu-manager';
-    const header = make('header'); header.append(make('strong','变量管理'),button('×','关闭',close));
-    status = make('div'); status.className = 'mvu-status'; notice = make('div'); notice.className = 'mvu-notice';
-    tree = make('fieldset'); tree.className = 'mvu-tree';
-    variablePage = make('div');
-    variablePage.append(button('重置当前轮','重置当前轮',()=>{MVU.resetCurrent();closeEditor();baseline=undefined;refresh();}), tree);
-    preview = make('section'); preview.hidden = true; preview.className = 'mvu-injection-preview';
-    previewText = make('pre'); previewStatus = make('p'); previewStatus.setAttribute('role','status');
-    recalculate = button('重新计算','重新计算',refreshPreview);
-    preview.append(make('p','MVU 将在发送正文末尾追加以下变量块'),recalculate,previewStatus,previewText);
-    const tabs = make('div'); tabs.className = 'mvu-tabs'; tabs.setAttribute('role','tablist');
-    for (const [label, page] of [['变量',variablePage],['变量注入预览',preview]]) {
-      const tab = button(label,label,()=>{
+    const slot = document.querySelector('[data-slot="statusbar"]');
+    root = slot && slot.querySelector('.mvu-manager-root');
+    if (!root) return;
+    launcher = root.querySelector('.mvu-manager-launcher');
+    panel = root.querySelector('.mvu-manager');
+    status = root.querySelector('.mvu-status'); notice = root.querySelector('.mvu-notice');
+    tree = root.querySelector('.mvu-tree'); variablePage = root.querySelector('.mvu-variable-page');
+    preview = root.querySelector('.mvu-injection-preview'); previewText = root.querySelector('.mvu-preview-text');
+    previewStatus = root.querySelector('.mvu-preview-status'); recalculate = root.querySelector('.mvu-recalculate');
+    const closeButton = root.querySelector('.mvu-manager-close');
+    const reset = root.querySelector('.mvu-reset');
+    const tabs = root.querySelector('.mvu-tabs');
+    launcher.onclick = open; closeButton.onclick = close; recalculate.onclick = refreshPreview;
+    reset.onclick = () => { try { MVU.resetCurrent(); closeEditor(); baseline = undefined; refresh(); } catch (error) { notice.textContent = error.message; } };
+    launcher.setAttribute('aria-label','打开变量管理'); closeButton.setAttribute('aria-label','关闭变量管理');
+    recalculate.setAttribute('aria-label','重新计算变量注入预览'); reset.setAttribute('aria-label','重置当前轮');
+    tabs.setAttribute('role','tablist'); previewStatus.setAttribute('role','status');
+    for (const [tab, page] of [[root.querySelector('.mvu-tab-variables'),variablePage],[root.querySelector('.mvu-tab-preview'),preview]]) {
+      tab.onclick = () => {
         variablePage.hidden = page !== variablePage; preview.hidden = page !== preview;
         for (const item of tabs.children) item.setAttribute('aria-selected', String(item === tab));
-      });
-      tab.setAttribute('role','tab'); tab.setAttribute('aria-selected',String(page === variablePage)); tabs.append(tab);
+      };
+      tab.setAttribute('role','tab'); tab.setAttribute('aria-selected',String(page === variablePage));
     }
-    panel.append(header,status,notice,tabs,variablePage,preview); refresh();
+    panel.hidden = true;
   }
   function open() {
     if (disposed) return;
-    initialize(); panel.hidden = false; refresh();
-    document.querySelector('[data-slot="statusbar"]').append(panel);
+    initialize();
+    if (!panel) return;
+    panel.hidden = false; refresh();
   }
   function close() {
     if (panel) panel.hidden = true;
     closeEditor();
   }
   function mount() {
-    if (disposed || launcher) return;
-    style = make('style', styleText);
-    launcher = make('button', '变量管理');
-    launcher.type = 'button'; launcher.className = 'mvu-manager-launcher';
-    launcher.onclick = open;
-    document.querySelector('[data-slot="statusbar"]').append(style, launcher);
+    if (!disposed) initialize();
   }
   function switchConversation() {
     if (disposed) return;
@@ -181,9 +182,7 @@
     if (disposed) return;
     disposed = true;
     document.removeEventListener('card:variables', refresh);
-    if (panel) panel.remove();
-    if (launcher) launcher.remove();
-    if (style) style.remove();
+    if (root) root.remove();
     value = undefined; baseline = undefined; closeEditor(); expanded.clear();
   }
   window.MVU_MANAGER = { open, close };

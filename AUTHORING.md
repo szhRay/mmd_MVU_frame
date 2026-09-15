@@ -126,11 +126,11 @@ CARD_AUTHOR.inject.variables = function (variables) {
 
 功能栏是基础常驻界面的首选载体，可以承载左右侧按钮、快捷操作、状态摘要，以及弹窗、菜单、抽屉和侧边栏的入口。可以沿用旧版 MMD 的信息架构，例如“侧边按钮 → 弹窗或侧边栏 → 选项写入输入框”，但只能沿用交互思路；新页实现必须使用 `<script>`、`sdk.*`、稳定的 `[data-chat]` / `[data-slot]` 与自有 class/id，不能复用旧版 `img onerror`、雷达法/teapot、旧选择器或 Shadow DOM。
 
-本框架默认不提供功能栏文件或功能栏正则，也不规定文件名。作者确认需要功能栏后，可以自行增加任意命名的 HTML、CSS、JS 源文件；新增一条只负责功能栏的独立正则，以唯一标记为 `findRegex`、以完整界面为 `replaceString`，再把该标记加入导入 JSON 的 `statusbar`。新增文件只是源码组织方式，平台实际接收的仍是正则 `replaceString`；默认构建器不会自动发现这些文件或生成这条规则。
+除可选的变量管理器插件外，本框架不提供作者业务功能栏文件或规则，也不规定文件名。作者确认需要功能栏后，可以自行增加任意命名的 HTML、CSS、JS 源文件；新增一条只负责功能栏的独立正则，以唯一标记为 `findRegex`、以完整界面为 `replaceString`，再把该标记加入导入 JSON 的 `statusbar`。新增文件只是源码组织方式，平台实际接收的仍是正则 `replaceString`；默认构建器不会自动发现这些文件或生成这条规则。
 
 功能栏规则必须与“作者配置·回复状态栏”分开，不能把功能栏 HTML、CSS、JS 或事件对象写进 `status.html`、`status.js`。功能栏只在装载时完成一次正则替换，动态数值与开关状态由 JS 更新已有 DOM，不依赖重新跑正则。脚本顶层不访问 DOM；需要初始化时使用新页事件，在回调中定位自己的固定 class/id。
 
-默认构建会把回复状态栏与舞台模板的触发串写入顶层 `statusbar`。两条规则替换后，隐藏模板源位于 `[data-slot="statusbar"]`，仅供框架克隆，不是玩家可见的功能栏。自定义功能栏标记与这两个内部标记并列，不能替换、包裹或复用它们。
+默认构建会把回复状态栏与舞台模板的触发串写入顶层 `statusbar`；启用变量管理器时还会加入它自己的功能栏标记。回复状态栏和舞台规则替换后的隐藏模板源仅供框架克隆，不是玩家可见的功能栏。自定义功能栏标记与这些内部标记并列，不能替换、包裹或复用它们。
 
 #### 回复状态栏：`status.html` + `status.js`
 
@@ -240,4 +240,4 @@ MVU.remove(path);
 
 修改完成后运行 `npm run build`。让 `tavern-mmd` 对正式产物执行 `validate.py --platform mmdsandbox`。
 
-构建后由 AI 使用 `tavern-mmd` 完成本地 chat/thin-preview 仿真，并把可见结果交给作者确认。正式导入始终使用 `output/mvu-regex.json`，本地仿真文件不提供给作者导入真站。
+构建后对正式 JSON 做语法检查和 MMD 新页校验。默认不生成或验证 chat/thin-preview 仿真页面；作者明确要求预览时再单独生成。正式导入始终使用 `output/mvu-regex.json`。

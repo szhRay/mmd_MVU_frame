@@ -1,13 +1,17 @@
 (function () {
+  if (window.__mvuReport) return;
+  window.__mvuReport = true;
   const bubbles = new Map();
+  let stopped = false;
   const make = (tag, text) => {
     const node = document.createElement(tag);
     if (text !== undefined) node.textContent = text;
     return node;
   };
   function show(node, entry) {
+    if (stopped) return;
     const row = CARD_INTERNAL.messages.get(entry.id);
-    const id = row ? row.serverId : entry.serverId;
+    const id = entry.serverId == null ? row && row.serverId : entry.serverId;
     let report = null;
     if (id != null) {
       try { report = MVU.getReplyReport(id); }
@@ -47,14 +51,17 @@
   }
 
   function render() {
+    if (stopped) return;
     for (const [node, entry] of bubbles) {
       if (!node.isConnected) bubbles.delete(node);
       else show(node, entry);
     }
   }
   sdk.on('message:mount', function (msg) {
-    if (msg.role !== 'ai') return;
-    for (const node of document.querySelectorAll('.mvu-report')) {
+    if (stopped || msg.role !== 'ai') return;
+    const body = document.querySelector('[data-chat="message-body"]');
+    if (!body) return;
+    for (const node of body.querySelectorAll('.mvu-report')) {
       if (bubbles.has(node)) continue;
       const entry = { id: msg.id, serverId: msg.serverId, identity: null };
       bubbles.set(node, entry);
@@ -63,5 +70,5 @@
   });
   document.addEventListener('card:variables', render);
   sdk.on('conversation:switch', () => bubbles.clear());
-  sdk.on('dispose', () => { bubbles.clear(); document.removeEventListener('card:variables', render); });
+  sdk.on('dispose', () => { stopped = true; bubbles.clear(); document.removeEventListener('card:variables', render); });
 })();

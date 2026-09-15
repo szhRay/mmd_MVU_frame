@@ -22,4 +22,3 @@
 
 - 作者需求只改 `src/author/` 与 `mvu.config.json`；框架修改必须另行说明。
 - 每次修改立即更新 `main.md`，完成步骤立即勾选本文件。
-- 发布和日常 Git 操作见 [MAINTENANCE.md](MAINTENANCE.md)。

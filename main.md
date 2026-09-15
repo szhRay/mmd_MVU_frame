@@ -10,7 +10,6 @@
 - [AI_WORKFLOW.md](AI_WORKFLOW.md) — 不懂代码的作者与 AI 的五组确认流程。
 - [AUTHORING.md](AUTHORING.md) — 九个作者入口及其运行时契约。
 - [API.md](API.md) — 项目公开接口和必要的新页 SDK。
-- [MAINTENANCE.md](MAINTENANCE.md) — GitHub 发布、日常维护、版本同步和安全恢复。
 - [plan.md](plan.md) — 当前状态与下一项工作模板。
 - [工作/验证记录.md](工作/验证记录.md) — 最近一次验证结果。
 

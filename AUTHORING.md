@@ -4,7 +4,7 @@
 
 作者只需描述角色、玩法、希望系统记住的内容、界面和风格。AI 不要求作者理解 Schema、字段类型、JSON Pointer、SDK、生命周期、正则或插件名，只追问尚未明确且会改变产品结果的选择。
 
-制作固定分为五组：MVU 数据模型、变量注入、全局美化、状态栏与舞台、发送/流式/完成行为。每组先给出简短的人类可读方案，得到作者确认后才修改对应入口；不提前实现后续组。全部完成后生成预览并进行最终视觉确认。具体对话提示和插件建议见 [AI_WORKFLOW.md](AI_WORKFLOW.md)。
+制作固定分为五组：MVU 数据模型、变量注入、全局美化、功能栏/回复状态栏/可选舞台、发送/流式/完成行为。每组先给出简短的人类可读方案，得到作者确认后才修改对应入口；不提前实现后续组。全部完成后生成预览并进行最终视觉确认。具体对话提示和插件建议见 [AI_WORKFLOW.md](AI_WORKFLOW.md)。
 
 常规制作以本手册和 [API.md](API.md) 为准。API 未覆盖所需能力、验证错误无法解释、实际行为与文档不一致，或作者明确要求诊断/修改框架时，才检查完整平台规范与 `src/framework/`。全局技能若规定必须读取平台规范，仍遵守技能要求。
 
@@ -23,7 +23,7 @@
 | MVU 数据模型 | `initial-variables.json`、`model.js` | 按实际变量定义初始快照、Schema 和派生字段。 |
 | 变量注入 | `variable-inject.js` | 决定玩家每次发送时把哪些当前变量交给 AI。 |
 | 全局美化 | `theme.css` | 统一聊天页、状态栏和舞台的视觉语义。 |
-| 界面内容 | `status.html` + `status.js`、`stage.html` + `stage.js` | 编写逐回复冻结界面和会话长期界面。 |
+| 界面内容 | `status.html` + `status.js`、`stage.html` + `stage.js` | 编写逐回复冻结界面和可选高级舞台。功能栏按需另建文件和规则。 |
 | 触发时机 | `before-send.js`、`stream.js`、`render.js` | 在发送前、流式回复中和完整回复后执行作者逻辑。 |
 
 这里的“九个”按构建后的作者配置正则计数：初始变量、变量结构、全局美化、变量注入、发送处理、回复状态栏、舞台、流式更新、完成更新。回复状态栏由 `status.html` 与 `status.js` 合成一条，舞台由 `stage.html` 与 `stage.js` 合成一条。`beginning.txt` 写入导入包的 `beginning`；`variable-rules.txt` 嵌入 `persona.txt` 后共同生成 `personality`。这三个文本文件都不计入正则条数。
@@ -51,17 +51,53 @@
 
 初始变量、Schema、`derive` 与 `variable-rules.txt` 必须表达同一套字段和规则。
 
+#### 变量更新规则：`variable-rules.txt`
+
+`variable-rules.txt` 会原样嵌入 persona，模型看不到 `model.js`，因此这里必须说明 Schema 无法由当前 YAML 值直接推断的限制。标签内使用根节点为 `规则` 的紧凑中文 YAML；默认 `规则: {}` 表示没有业务变量，制作角色时替换为实际规则。
+
+只使用以下中文说明键，并且按需填写：
+
+| 键 | 何时填写 |
+|---|---|
+| `类型` | 非文本类型，或动态对象需要说明键和值结构时。 |
+| `范围` | 数值有硬边界时。 |
+| `格式` | 日期、时间或固定文本格式不能从字段名判断时。 |
+| `取值` | 只有有限状态会影响阶段、分支或界面时。 |
+| `分段` | 数值区间具有不同业务含义时。 |
+| `说明` | 字段名仍不足以表达含义时。 |
+| `更新` | 需要明确触发条件、单次幅度、阈值或禁止条件时。 |
+
+示例仅用于说明格式，不复制进实际项目：
+
+```yaml
+规则:
+  角色.${角色甲|角色乙}.关系值:
+    类型: 数值
+    范围: 0~100
+    分段: {0~29: 疏远,30~69: 熟悉,70~100: 亲密}
+    更新: [仅按本轮已发生互动调整,普通事件单次1~3,重大事件单次4~10]
+  物品栏:
+    类型: "{[物品名]:{数量:数值,说明:文本}}"
+    更新: [实际获得时新增,实际消耗完时删除]
+```
+
+变量路径和业务字段使用简短中文；固定玩家键写 `玩家`，不把玩家名或名称宏用作对象键。同类固定字段用 `${字段甲|字段乙}` 合并；动态角色、任务、物品等集合写容器路径，并在 `类型` 中说明动态键结构。文本类型、自明含义和普通更新条件省略，不为完整表格重复信息。
+
+变量设计先判断它是否会影响剧情连续性、角色反应、玩法、分支或界面；没有实际消费者的状态不追踪，可由其他字段确定的值交给 `derive`，不重复交给 AI。有稳定名称的角色、任务和物品优先使用对象键；只有顺序或重复项本身有意义时才使用数组。枚举只用于确实有限且会驱动行为的状态。
+
+更新条件只依据当前变量与本轮正文已经发生的事实，不预测未来。数值规则写明范围、单次幅度、阈值和显著事件；`_` 派生字段与 `$` 隐藏字段不写更新规则。新增、删除、改名或改变类型时，同步检查初始变量、严格 Schema、`derive`、本文件和变量注入。
+
 ### 二、变量注入
 
-`variable-inject.js` 在玩家每次发送时同步收到当前变量副本。作者可以按本轮 AI 真正需要的上下文筛选、重命名、组合或省略字段，再返回要随消息发送的字符串；它不修改玩家正文。
+`variable-inject.js` 在玩家每次发送时同步收到当前变量副本。作者可以按本轮 AI 真正需要的上下文筛选、重命名、组合或省略字段，再返回要随消息发送的字符串。默认发送全部变量；它不修改玩家正文。
 
 推荐把普通 JSON 数据交给 `CARD.yaml.stringify(value)`：
 
 ```js
 CARD_AUTHOR.inject.variables = function (variables) {
   return CARD.yaml.stringify({
-    profile: variables.profile,
-    state: variables.state,
+    角色: variables.角色,
+    状态: variables.状态,
   });
 };
 ```
@@ -84,9 +120,21 @@ CARD_AUTHOR.inject.variables = function (variables) {
 
 ### 四、界面内容
 
+#### 顶层功能栏：`statusbar` → `[data-slot="statusbar"]`
+
+导入正则 JSON 顶层的 `statusbar` 是功能栏原始内容。平台装载角色时先让它依次经过 `regex_scripts` 正则替换，再把替换后的可见 HTML 放进 `[data-slot="statusbar"]`；规则中的 `<style>` 和 `<script>` 会被平台抽取并安装。因此 `statusbar` 通常只写短触发串，完整界面放在对应规则的 `replaceString` 中，避免占用 200 字符额度。
+
+功能栏是基础常驻界面的首选载体，可以承载左右侧按钮、快捷操作、状态摘要，以及弹窗、菜单、抽屉和侧边栏的入口。可以沿用旧版 MMD 的信息架构，例如“侧边按钮 → 弹窗或侧边栏 → 选项写入输入框”，但只能沿用交互思路；新页实现必须使用 `<script>`、`sdk.*`、稳定的 `[data-chat]` / `[data-slot]` 与自有 class/id，不能复用旧版 `img onerror`、雷达法/teapot、旧选择器或 Shadow DOM。
+
+本框架默认不提供功能栏文件或功能栏正则，也不规定文件名。作者确认需要功能栏后，可以自行增加任意命名的 HTML、CSS、JS 源文件；新增一条只负责功能栏的独立正则，以唯一标记为 `findRegex`、以完整界面为 `replaceString`，再把该标记加入导入 JSON 的 `statusbar`。新增文件只是源码组织方式，平台实际接收的仍是正则 `replaceString`；默认构建器不会自动发现这些文件或生成这条规则。
+
+功能栏规则必须与“作者配置·回复状态栏”分开，不能把功能栏 HTML、CSS、JS 或事件对象写进 `status.html`、`status.js`。功能栏只在装载时完成一次正则替换，动态数值与开关状态由 JS 更新已有 DOM，不依赖重新跑正则。脚本顶层不访问 DOM；需要初始化时使用新页事件，在回调中定位自己的固定 class/id。
+
+默认构建会把回复状态栏与舞台模板的触发串写入顶层 `statusbar`。两条规则替换后，隐藏模板源位于 `[data-slot="statusbar"]`，仅供框架克隆，不是玩家可见的功能栏。自定义功能栏标记与这两个内部标记并列，不能替换、包裹或复用它们。
+
 #### 回复状态栏：`status.html` + `status.js`
 
-状态栏属于单条 AI 回复。框架在该消息挂载时克隆 `status.html` 的唯一 `.card-status-root`，在完整回复和对应变量快照可用后调用一次：
+回复状态栏属于单条 AI 回复，与顶层功能栏不是同一层。框架在该消息挂载时，从 `[data-slot="statusbar"]` 内的隐藏模板源克隆 `status.html` 的唯一 `.card-status-root`，在完整回复和对应变量快照可用后调用一次：
 
 ```js
 CARD_AUTHOR.status.render(root, { content, message, variables });
@@ -96,7 +144,7 @@ CARD_AUTHOR.status.render(root, { content, message, variables });
 
 `status.html` 中的 HTML 定义结构，内联 CSS 只修饰 `.card-status-root` 内的元素，`status.js` 负责根内动态列表和交互。HTML 文本或安全属性可以写 `[[变量.路径]]` 标量占位，具体规则如下：
 
-- 路径按英文句点分段；数组元素使用数字段，例如 `[[items.0.name]]`。字段名本身不能包含英文句点，空段以及 `__proto__`、`prototype`、`constructor` 段非法。
+- 路径按英文句点分段；数组元素使用数字段，例如 `[[物品栏.0.名称]]`。字段名本身不能包含英文句点，空段以及 `__proto__`、`prototype`、`constructor` 段非法。
 - 最终值只能是字符串、有限数字或布尔值，并统一转成字符串；`null`、对象、数组和不存在的路径非法。
 - 占位符不能写进 `style` 或 `script` 文本，也不能写进 `on*`、`href`、`src`、`srcset`、`action`、`formaction` 属性。平台仍会删除作者自写 `data-*`。
 - 一次替换是整体操作；任一占位符非法时不替换任何占位符，状态栏继续隐藏。
@@ -105,7 +153,7 @@ CARD_AUTHOR.status.render(root, { content, message, variables });
 
 #### 舞台：`stage.html` + `stage.js`
 
-舞台用于地图、角色面板、背包等需要在当前会话长期存在的大面积交互界面。框架在首次 `message:mount` 时把 `stage.html` 的唯一 `.card-stage-root` 克隆到 `sdk.stage.el()`，然后同步调用一次 `CARD_AUTHOR.stage.render(root)`。该入口只初始化根内 DOM 和绑定交互，不负责打开舞台，也不读取变量。
+舞台是可选的高级扩展，不是基础界面的默认载体。侧边按钮、弹窗、侧边栏和小型常驻面板优先使用功能栏；只有地图、背包、小游戏或大型角色面板需要覆盖消息区或整屏时，才使用舞台。框架在首次 `message:mount` 时把 `stage.html` 的唯一 `.card-stage-root` 克隆到 `sdk.stage.el()`，然后同步调用一次 `CARD_AUTHOR.stage.render(root)`。该入口只初始化根内 DOM 和绑定交互，不负责打开舞台，也不读取变量。
 
 这里不使用 `ready`：MMD 新页的首屏顺序是 `message:new → message:mount → message:done → ready`，而且晚注册的 `ready` 监听不会补发，无法可靠承担首屏舞台构建。`message:mount` 能覆盖首次已有消息和之后的会话重建。
 
@@ -173,14 +221,14 @@ MVU.remove(path);
 - `sdk.on` 只能在脚本体注册，不能嵌套在 `message:mount` 中。
 - `document.currentScript` 恒为 `null`；用固定 class/id 和事件提供的消息作用域定位。
 - 禁止 `img onerror`、teapot、Shadow DOM 和作者自写 `data-*`。作者元素使用自有 class/id。
-- 长期界面放 `sdk.stage`；气泡状态栏只保存该回复的冻结视图。
+- 基础常驻入口、弹窗和侧边栏优先放功能栏；只有需要覆盖消息区或整屏的大型长期界面才使用 `sdk.stage`。回复状态栏只保存该回复的冻结视图。
 - 作者 CSS 不写 `html`、`body`、`:root` 或全局 `*`，平台换肤写在 `[data-chat="root"]`。
 - 不直接读取消息正文 DOM；流式和完成内容分别使用事件载荷的 `content`。
 - `sdk.message.*`、`sdk.save.*` 等 Promise 调用必须显式处理失败。
 
 ## 开场白、Persona 与更新协议
 
-`beginning.txt` 是玩家看到的开场 AI 消息。构建时会去掉文件首尾空白并写入导入包的 `beginning`，长度不得超过 4000 字符。它使用初始变量快照，不解析也不需要 `<变量更新>` 块；状态栏和舞台触发串由构建器固定写入 `statusbar`，不需要放进开场白。
+`beginning.txt` 是玩家看到的开场 AI 消息。构建时会去掉文件首尾空白并写入导入包的 `beginning`，长度不得超过 4000 字符。它使用初始变量快照，不解析也不需要 `<变量更新>` 块；默认回复状态栏与舞台的触发串，以及按需增加的功能栏标记，都写入顶层 `statusbar`，不需要放进开场白。
 
 在 `persona.txt` 填写角色设定，在 `variable-rules.txt` 逐字段描述语义与更新条件。不要改掉 `{{VARIABLE_RULES}}` 占位；构建器要求它恰好出现一次。
 
@@ -190,6 +238,6 @@ MVU.remove(path);
 
 构建会直接拒绝：缺少源文件、非法配置、重复插件、未知插件、非 slash 匹配式、可命中空串的正则、重复匹配式、触发标记交叉污染、错误模板根、错误 JSON 键、规则名称超过 20 字、匹配式超过 1000 字或替换内容达到 20000 字。
 
-修改完成后依次运行 `npm test`、`npm run build`。让 `tavern-mmd` 对正式产物执行 `validate.py --platform mmdsandbox`。
+修改完成后运行 `npm run build`。让 `tavern-mmd` 对正式产物执行 `validate.py --platform mmdsandbox`。
 
-标准沙盒仿真不暴露真实站内部的消息 Pinia store，而 MVU 的回溯和历史快照需要该 store。运行 `npm run preview:fixture` 会生成只供本地仿真的 `工作/mvu-preview-fixture.json`，其中额外加入测试消息仓；让 `tavern-mmd` 用该文件生成 chat/thin-preview 全景预览。正式导入始终使用 `output/mvu-regex.json`，测试适配器绝不能导入真站。
+构建后由 AI 使用 `tavern-mmd` 完成本地 chat/thin-preview 仿真，并把可见结果交给作者确认。正式导入始终使用 `output/mvu-regex.json`，本地仿真文件不提供给作者导入真站。

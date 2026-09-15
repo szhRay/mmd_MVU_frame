@@ -10,7 +10,6 @@
 - [AI_WORKFLOW.md](AI_WORKFLOW.md) — 不懂代码的作者与 AI 的五组确认流程。
 - [AUTHORING.md](AUTHORING.md) — 九个作者入口及其运行时契约。
 - [API.md](API.md) — 项目公开接口和必要的新页 SDK。
-- [MAINTENANCE.md](MAINTENANCE.md) — GitHub 发布、日常维护、版本同步和安全恢复。
 - [plan.md](plan.md) — 当前状态与下一项工作模板。
 - [工作/验证记录.md](工作/验证记录.md) — 最近一次验证结果。
 
@@ -31,4 +30,5 @@
 - 启用 `manager` 后为 16 条；仅接受 `report`、`user-view`、`manager`、`prune`。
 - 导入 JSON 顶层恰好六键，每条规则恰好四键且 ID 为负数。
 - 作者只使用新页 SDK、稳定的 `[data-chat]` / `[data-slot]` 和自有 class/id。
-- 状态栏在完整 AI 回复和对应变量快照可用后才渲染；舞台根在首次 `message:mount` 时构建。
+- 顶层 `statusbar` 经正则替换后进入 `[data-slot="statusbar"]`；功能栏按需另建文件、独立规则和唯一标记，不属于默认九个作者规则。`status.html`、`status.js` 只保存逐回复快照，舞台仅作可选高级界面。
+- 变量更新规则使用紧凑中文 YAML；只写有实际用途、不能可靠推导且需要额外约束的字段，完整 persona 不得超过 10000 字符。

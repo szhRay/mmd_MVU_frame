@@ -65,7 +65,17 @@ function sendChoice(text) {
 
 `cache` 只存界面当场状态，不存玩法进度；`save` 不用于复制 MVU 变量。存档键不含冒号且不超过 64 字符，写入值必须可 `JSON.stringify`。游客存档不会迁移到登录账号，不能把持久存档设计成唯一可玩路径。
 
-### 舞台
+### 功能栏与基础浮层
+
+导入正则 JSON 的 `statusbar` 内容会先经过全部正则规则替换，替换后的可见 DOM 位于 `[data-slot="statusbar"]`。基础常驻界面优先放在这里，包括侧边按钮、弹窗入口、菜单、抽屉、侧边栏和快捷操作。
+
+`statusbar` 最长 200 字符，通常只保存触发串；完整 HTML/CSS/JS 放在匹配该触发串的 `replaceString`。功能栏只在装载时执行一次正则替换，动态内容由 JS 更新现有 DOM，不依赖重新跑正则。
+
+本框架不内置功能栏，也不规定文件名。需要时可自行增加任意命名的 HTML、CSS、JS 源文件，建立独立功能栏正则，并把它的唯一标记加入 JSON 的 `statusbar`。默认的 `status.html`、`status.js` 只负责逐回复状态栏，不能承载功能栏。新增文件不会被默认构建器自动发现；实际导入内容必须明确组装进功能栏规则的 `replaceString`。
+
+旧版 MMD 的按钮、弹窗和侧边栏组织方式可以作为产品结构参考，但新页只使用 `<script>`、`sdk.*`、`[data-chat]` / `[data-slot]` 和自有 class/id。旧版 `img onerror`、雷达法/teapot、旧选择器与 Shadow DOM 不可复用。
+
+### 可选舞台
 
 | 能力 | 参数 | 返回 | 类型 | 用途与限制 |
 |---|---|---|---|---|
@@ -74,7 +84,7 @@ function sendChoice(text) {
 | `sdk.stage.el()` | 无 | `HTMLElement` | sync | 取得舞台容器；关闭时仍可能返回节点。 |
 | `sdk.stage.visible()` | 无 | `boolean` | sync | 唯一可靠的舞台开关判断。 |
 
-框架会在首次消息挂载时创建 `.card-stage-root`。作者入口只更新自己的根节点，不在每次打开时重建舞台。
+舞台只用于需要覆盖消息区或整屏的大型、高级界面；普通侧边栏和弹窗不需要舞台。框架会在首次消息挂载时创建 `.card-stage-root`。作者入口只更新自己的根节点，不在每次打开时重建舞台。
 
 ### 角色、玩家、调试与事件
 
@@ -153,7 +163,7 @@ if (latestSent) {
 
 ```js
 const variables = CARD.variables.current();
-panel.querySelector('.current-value').textContent = variables.profile.name;
+panel.querySelector('.current-value').textContent = variables.角色.姓名;
 ```
 
 只在入口没有提供 `variables` 时调用。读取结果仅供展示；给返回对象赋值不会提交变量。
@@ -183,7 +193,7 @@ const firstReplyVariables = CARD.variables.reply(1);
 路径使用 JSON Pointer：
 
 - 必须以 `/` 开头，不能用空字符串表示根。
-- 对象字段和数组索引各占一段，例如 `/profile/name`、`/items/0`。
+- 对象字段和数组索引各占一段，例如 `/角色/姓名`、`/物品栏/0`。
 - 字段名中的 `~` 写成 `~0`，`/` 写成 `~1`。
 - 数组索引使用非负整数；`insert` 可用末段 `-` 表示追加。
 
@@ -192,7 +202,7 @@ const firstReplyVariables = CARD.variables.reply(1);
 替换已经存在的对象字段或数组元素。`value` 必须是普通 JSON 数据。
 
 ```js
-const variables = MVU.replace('/profile/name', '新名字');
+const variables = MVU.replace('/角色/姓名', '新名字');
 ```
 
 ### `MVU.delta(path, value)`
@@ -200,7 +210,7 @@ const variables = MVU.replace('/profile/name', '新名字');
 给已经存在的数字字段增加 `value`。原值、增量和结果都必须是有限数字。
 
 ```js
-const variables = MVU.delta('/stats/score', 1);
+const variables = MVU.delta('/状态/积分', 1);
 ```
 
 ### `MVU.insert(path, value)`
@@ -208,9 +218,9 @@ const variables = MVU.delta('/stats/score', 1);
 新增不存在的对象字段，或在数组指定位置插入元素。对象字段已经存在时失败；数组可在 `0` 到当前长度之间插入。
 
 ```js
-const variables = MVU.insert('/items/-', {
-  name: '新项目',
-  count: 1,
+const variables = MVU.insert('/物品栏/-', {
+  名称: '新物品',
+  数量: 1,
 });
 ```
 
@@ -219,7 +229,7 @@ const variables = MVU.insert('/items/-', {
 删除已经存在的对象字段或数组元素。
 
 ```js
-const variables = MVU.remove('/effects/0');
+const variables = MVU.remove('/效果/0');
 ```
 
 四个方法都要求变量系统已经就绪，且路径、结果和派生值必须满足严格 Schema。返回值表示本次变量提交成功，不表示异步持久化已经完成。连续调用多个方法会形成多个独立提交；后一次失败不会撤销此前已经成功的调用。

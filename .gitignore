@@ -1,7 +1,7 @@
 node_modules/
 output/
-工作/*.html
-工作/*.png
-工作/mvu-preview-fixture.json
+工作/
+MAINTANANCE.md
 .env
 .env.*
+/tests

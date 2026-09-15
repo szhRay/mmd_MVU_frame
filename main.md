@@ -7,15 +7,16 @@
 ## 从这里开始
 
 - [README.md](README.md) — 作者入口、构建和导入说明。
-- [AI_WORKFLOW.md](AI_WORKFLOW.md) — 不懂代码的作者与 AI 的五组确认流程。
-- [AUTHORING.md](AUTHORING.md) — 九个作者入口及其运行时契约。
-- [API.md](API.md) — 项目公开接口和必要的新页 SDK。
+- [参考文档](docs/README.md) — 作者流程、入口契约和 API 手册索引。
+- [AI_WORKFLOW.md](docs/AI_WORKFLOW.md) — 不懂代码的作者与 AI 的五组确认流程。
+- [AUTHORING.md](docs/AUTHORING.md) — 九个作者入口及其运行时契约。
+- [API.md](docs/API.md) — 项目公开接口和必要的新页 SDK。
 - [plan.md](plan.md) — 当前状态与下一项工作模板。
-- [工作/验证记录.md](工作/验证记录.md) — 最近一次验证结果。
 
 ## 目录
 
 - `src/author/` — 作者日常修改的九个入口与 persona。
+- `docs/` — 集中的作者参考文档与索引。
 - `mvu.config.json` — 默认插件配置。
 - `src/framework/` — 框架实现；仅在明确修复框架时修改。
 - `src/plugins/` — 四个可选插件。

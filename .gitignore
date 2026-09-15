@@ -4,4 +4,4 @@ output/
 MAINTANANCE.md
 .env
 .env.*
-/tests
+tests/

@@ -14,7 +14,7 @@
 
 变量只记录会影响剧情、玩法或界面的状态。AI 使用简短中文字段构建严格模型，并以紧凑中文 YAML 编写更新条件；自明内容省略、同类规则合并、派生值不交给模型重复更新，以控制 MMD persona 字符占用。
 
-直接使用 [AI_WORKFLOW.md](AI_WORKFLOW.md) 中的起始提示词。
+直接使用 [AI_WORKFLOW.md](docs/AI_WORKFLOW.md) 中的起始提示词。
 
 ### 2. 逐组确认并搭建
 
@@ -22,7 +22,7 @@ AI 按“MVU 数据模型 → 变量注入 → 全局美化 → 功能栏、回�
 
 功能栏不是九个默认作者入口之一，也不与逐回复状态栏共用文件。需要时，作者可自行增加任意命名的 HTML、CSS、JS 源文件，为它建立独立正则规则，并把唯一触发标记加入导入 JSON 的 `statusbar`。默认构建不自动发现或加入功能栏，因此规则数量仍为 12 / 15 / 16。
 
-各入口的参数、时机和边界见 [AUTHORING.md](AUTHORING.md)，项目接口与必要的新页 SDK 见 [API.md](API.md)。
+各入口的参数、时机和边界见 [AUTHORING.md](docs/AUTHORING.md)，项目接口与必要的新页 SDK 见 [API.md](docs/API.md)。全部参考资料可从 [docs/README.md](docs/README.md) 进入。
 
 ### 3. 构建与预览
 
@@ -37,10 +37,6 @@ npm run build
 - `output/mvu-preview.html`：可选本地预览；作者明确要求时再查看，不作为默认验证步骤。
 
 完成本地验证后，在全新的 MMD 新页角色和全新对话中做最终人工验收。
-
-## 发布与维护
-
-首次发布 GitHub、日常提交、打版本标签和安全恢复见 [MAINTENANCE.md](MAINTENANCE.md)。
 
 ## 规则数量
 

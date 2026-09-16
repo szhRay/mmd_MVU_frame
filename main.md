@@ -30,6 +30,7 @@
 - 启用 `manager` 后为 16 条；仅接受 `report`、`user-view`、`manager`、`prune`。
 - 导入 JSON 顶层恰好六键，每条规则恰好四键且 ID 为负数。
 - 作者只使用新页 SDK、稳定的 `[data-chat]` / `[data-slot]` 和自有 class/id。
+- 消息正文、功能栏与正则替换 HTML 只使用 `docs/AUTHORING.md` 列出的 worker/DOMPurify 交集白名单；白名单外语义容器统一改为自有 class 的 `div`。
 - 顶层 `statusbar` 经正则替换后进入 `[data-slot="statusbar"]`；功能栏按需另建文件、独立规则和唯一标记，不属于默认九个作者规则。`status.html`、`status.js` 只保存逐回复快照，舞台仅作可选高级界面。
 - 变量更新规则使用紧凑中文 YAML；只写有实际用途、不能可靠推导且需要额外约束的字段，完整 persona 不得超过 10000 字符。
 - 变量 Schema 默认保留未声明字段并使用第一级验证能力；只有结果含义唯一且不影响派生语义时，才使用第二级确定性规范化，第三级高风险转换继续禁止。

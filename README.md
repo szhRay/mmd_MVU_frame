@@ -24,6 +24,8 @@ AI 按“MVU 数据模型 → 变量注入 → 全局美化 → 功能栏、回�
 
 各入口的参数、时机和边界见 [AUTHORING.md](docs/AUTHORING.md)，项目接口与必要的新页 SDK 见 [API.md](docs/API.md)。全部参考资料可从 [docs/README.md](docs/README.md) 进入。
 
+界面 HTML 必须使用 [作者手册列出的 MMD 新页容器白名单](docs/AUTHORING.md#mmd-新页约束)。白名单外的标签即使浏览器本身支持，也会在消息、功能栏或正则替换管线中被剥掉；布局不要使用未列出的语义容器。
+
 ### 3. 构建与预览
 
 ```powershell

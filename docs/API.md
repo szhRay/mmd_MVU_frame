@@ -75,6 +75,8 @@ function sendChoice(text) {
 
 旧版 MMD 的按钮、弹窗和侧边栏组织方式可以作为产品结构参考，但新页只使用 `<script>`、`sdk.*`、`[data-chat]` / `[data-slot]` 和自有 class/id。旧版 `img onerror`、雷达法/teapot、旧选择器与 Shadow DOM 不可复用。
 
+功能栏及正则替换产生的 HTML 必须满足 [AUTHORING.md 的 MMD 新页容器白名单](AUTHORING.md#mmd-新页约束)。白名单外的标签壳会被净化删除；不要使用 `section`、`header`、`fieldset` 等未列出的语义容器，也不要依赖作者自写 `data-*` 或 SVG 内联事件。
+
 ### 可选舞台
 
 | 能力 | 参数 | 返回 | 类型 | 用途与限制 |

@@ -5,6 +5,7 @@
 - 新会话先读 `main.md` 和 `plan.md`，再读 `README.md`、`docs/AUTHORING.md`、`docs/API.md` 与 `docs/AI_WORKFLOW.md`。
 - 必须先通过自然语言对话了解作者需求，再按 MVU 数据模型、变量注入、全局美化、功能栏/回复状态栏/可选舞台、发送/流式/完成行为五组推进；每组先确认业务与界面结果，再修改该组。
 - 侧边按钮、弹窗、菜单和侧边栏优先使用 `statusbar` 正则替换后落入的 `[data-slot="statusbar"]` 功能栏；舞台仅作为覆盖消息区或整屏的可选高级界面。功能栏按需自行增加文件、独立正则和唯一标记，不得写入逐回复状态栏的 `status.html`、`status.js`。
+- 所有进入消息正文、功能栏或正则 `replaceString` 的静态 HTML 必须使用 `docs/AUTHORING.md` 列出的 MMD 新页容器白名单；白名单外标签改为自有 class 的 `div`，并检查作者 `data-*`、中文尖括号标记和 SVG 内联事件等净化限制。
 - 不向作者询问 Schema、字段类型、JSON Pointer、SDK、生命周期、正则或插件名称，只追问会改变产品结果的缺失信息。
 - 变量只追踪有实际消费者且不能可靠推导的状态；业务字段使用简短中文，更新规则使用紧凑中文 YAML，Schema 默认采用 `docs/AUTHORING.md` 的第一级验证能力并保留未声明字段。只有结果含义唯一且不影响派生语义时，才使用第二级确定性规范化；同步检查初始变量、Schema、`derive`、规则和变量注入。
 - 作者需求只修改 `src/author/` 与 `mvu.config.json`；除非任务明确是修复框架，不修改 `src/framework/`。

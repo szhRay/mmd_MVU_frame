@@ -1,6 +1,6 @@
 (function () {
   const bodies = new Map();
-  const skipped = 'pre,code,kbd,samp,input,textarea,script,style,.card-quote,.mvu-report,.mvu-rpg-status,.mvu-rpg-stage,.mvu-manager,.mvu-user-variables';
+  const skipped = 'pre,code,kbd,samp,input,textarea,script,style,.card-quote';
   const quotes = /“([^“”\r\n]{1,800})[“”]|"([^"\r\n]{1,800})"/g;
 
   function decorate(root) {

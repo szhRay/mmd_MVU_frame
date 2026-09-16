@@ -1,4 +1,5 @@
 node_modules/
+output/
 工作/
 MAINTANANCE.md
 .env

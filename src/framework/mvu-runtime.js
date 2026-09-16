@@ -1,6 +1,7 @@
 (function () {
   const saveKey = 'mvu_state';
   let frame = null;
+  let preloadTimer = null;
   let started = false;
   let ready = false;
   let disposed = false;
@@ -25,9 +26,31 @@
     current: () => MVU.getCurrent(),
     reply: message => MVU.getReplySnapshot(message),
   });
+  function clearSchedule() {
+    if (frame !== null) cancelAnimationFrame(frame);
+    if (preloadTimer !== null) clearTimeout(preloadTimer);
+    frame = null;
+    preloadTimer = null;
+  }
+  function synchronize() {
+    frame = null;
+    MVU.sync();
+    if (MVU.info().status !== '存档未预载') return;
+    preloadTimer = setTimeout(() => {
+      preloadTimer = null;
+      schedule();
+    }, 100);
+  }
   function schedule() {
     if (frame !== null || !started) return;
-    frame = requestAnimationFrame(() => { frame = null; MVU.sync(); });
+    if (preloadTimer !== null) clearTimeout(preloadTimer);
+    preloadTimer = null;
+    frame = requestAnimationFrame(synchronize);
+  }
+  function switchConversation() {
+    clearSchedule();
+    MVU.switchConversation();
+    schedule();
   }
   function start() {
     if (started || disposed || !ready || !validator) return;
@@ -55,7 +78,11 @@
     };
     document.head.append(script);
   }
-  sdk.on('message:mount', loadValidator);
+  sdk.on('message:mount', function () {
+    loadValidator();
+    schedule();
+  });
+  sdk.on('message:done', schedule);
   sdk.on('ready', function () {
     ready = true;
     MVU.sync();
@@ -63,15 +90,12 @@
     start();
   });
   document.addEventListener('card:messages', schedule);
-  sdk.on('conversation:switch', function () {
-    MVU.switchConversation();
-    schedule();
-  });
+  sdk.on('conversation:switch', switchConversation);
   sdk.on('dispose', function () {
     disposed = true;
     started = false;
     if (script) { script.onload = null; script.onerror = null; script.remove(); }
-    if (frame !== null) cancelAnimationFrame(frame);
+    clearSchedule();
     document.removeEventListener('card:messages', schedule);
     MVU.stop();
   });

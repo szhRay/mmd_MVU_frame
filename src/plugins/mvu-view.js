@@ -61,12 +61,12 @@
     if (stopped || msg.role !== 'ai') return;
     const body = document.querySelector('[data-chat="message-body"]');
     if (!body) return;
-    for (const node of body.querySelectorAll('.mvu-report')) {
-      if (bubbles.has(node)) continue;
-      const entry = { id: msg.id, serverId: msg.serverId, identity: null };
-      bubbles.set(node, entry);
-      show(node, entry);
-    }
+    const [node, ...duplicates] = body.querySelectorAll('.mvu-report');
+    for (const duplicate of duplicates) { bubbles.delete(duplicate); duplicate.remove(); }
+    if (!node || bubbles.has(node)) return;
+    const entry = { id: msg.id, serverId: msg.serverId, identity: null };
+    bubbles.set(node, entry);
+    show(node, entry);
   });
   document.addEventListener('card:variables', render);
   sdk.on('conversation:switch', () => bubbles.clear());

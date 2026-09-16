@@ -48,12 +48,18 @@
       }
     } catch (error) {
       changed = true; available = false; baseline = undefined; value = undefined; closeEditor(); tree.replaceChildren(); notice.textContent = error.message;
-    } finally { tree.disabled = !available; refreshPreview(); refreshing = false; }
+    } finally { refreshPreview(); refreshing = false; }
     return changed;
+  }
+  function apply(operation) {
+    if (operation.op === 'replace') return MVU.replace(operation.path, operation.value);
+    if (operation.op === 'insert') return MVU.insert(operation.path, operation.value);
+    if (operation.op === 'remove') return MVU.remove(operation.path);
+    throw new Error('不支持的变量操作');
   }
   function submit(operation) {
     if (refresh() || !available) return false;
-    MVU.applyPlayer([operation]); closeEditor(); refresh(); notice.textContent = '已提交'; return true;
+    apply(operation); closeEditor(); refresh(); notice.textContent = '已提交'; return true;
   }
   function editor(host, current, path, adding) {
     closeEditor();
@@ -134,7 +140,7 @@
     root = slot && slot.querySelector('.mvu-manager-root');
     if (!root) return;
     launcher = root.querySelector('.mvu-manager-launcher');
-    panel = root.querySelector('.mvu-manager');
+    panel = root.querySelector('.mvu-manager-panel');
     status = root.querySelector('.mvu-status'); notice = root.querySelector('.mvu-notice');
     tree = root.querySelector('.mvu-tree'); variablePage = root.querySelector('.mvu-variable-page');
     preview = root.querySelector('.mvu-injection-preview'); previewText = root.querySelector('.mvu-preview-text');
@@ -149,21 +155,22 @@
     tabs.setAttribute('role','tablist'); previewStatus.setAttribute('role','status');
     for (const [tab, page] of [[root.querySelector('.mvu-tab-variables'),variablePage],[root.querySelector('.mvu-tab-preview'),preview]]) {
       tab.onclick = () => {
-        variablePage.hidden = page !== variablePage; preview.hidden = page !== preview;
+        variablePage.classList.toggle('is-hidden', page !== variablePage);
+        preview.classList.toggle('is-hidden', page !== preview);
         for (const item of tabs.children) item.setAttribute('aria-selected', String(item === tab));
       };
       tab.setAttribute('role','tab'); tab.setAttribute('aria-selected',String(page === variablePage));
     }
-    panel.hidden = true;
+    panel.classList.add('is-hidden');
   }
   function open() {
     if (disposed) return;
     initialize();
     if (!panel) return;
-    panel.hidden = false; refresh();
+    panel.classList.remove('is-hidden'); refresh();
   }
   function close() {
-    if (panel) panel.hidden = true;
+    if (panel) panel.classList.add('is-hidden');
     closeEditor();
   }
   function mount() {
@@ -175,7 +182,7 @@
     if (panel) {
       tree.replaceChildren(); notice.textContent = ''; status.textContent = '';
       previewText.textContent = ''; previewStatus.textContent = '';
-      available = false; tree.disabled = true;
+      available = false;
     }
   }
   function dispose() {

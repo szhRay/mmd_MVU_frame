@@ -1,8 +1,7 @@
 (function () {
   const keep = 3; // 作者配置：保留最近几条玩家消息中的当前变量。
+  const variableSuffix = /\n\[当前变量\](?:(?!\[\/?当前变量\])[\s\S])*\[\/当前变量\]\s*$/;
   let stopped = false;
-  let slot = null;
-  let round = 0;
 
   function removeVariables(content) {
     const start = content.lastIndexOf('\n[当前变量]');
@@ -12,18 +11,11 @@
     return content.slice(0, start);
   }
 
-  // 触发契约：业务触发走 card:variables + MVU.info()，不监听消息时序事件。
-  // slotId 变化=新会话只立基线；round 回退=回溯只跟随；round 增加=新一轮已提交。
-  function update() {
-    if (stopped) return;
+  function beforeSend(event) {
+    if (stopped || !event.target.closest('[data-chat="send"]') || !variableSuffix.test(sdk.input.get())) return;
     try {
-      const info = MVU.info();
-      if (!info.ready) return;
-      if (info.slotId !== slot) { slot = info.slotId; round = info.round; return; }
-      if (info.round <= round) { round = info.round; return; }
-      round = info.round;
       const users = CARD_INTERNAL.messages.snapshot().messages.filter(row => row.role === 'user');
-      const target = users[users.length - 1 - keep];
+      const target = users[users.length - keep];
       if (!target || target.serverId == null) return;
       const content = removeVariables(target.content);
       if (content === null) return;
@@ -35,13 +27,11 @@
     }
   }
 
-  function switchConversation() { slot = null; round = 0; }
   function dispose() {
     stopped = true;
-    document.removeEventListener('card:variables', update);
+    document.removeEventListener('click', beforeSend, true);
   }
 
-  document.addEventListener('card:variables', update);
-  sdk.on('conversation:switch', switchConversation);
+  document.addEventListener('click', beforeSend, true);
   sdk.on('dispose', dispose);
 })();

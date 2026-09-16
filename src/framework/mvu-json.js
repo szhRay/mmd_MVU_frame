@@ -72,11 +72,15 @@
 
   function parse(content) {
     const blocks = [...content.matchAll(/<变量更新>([\s\S]*?)<\/变量更新>/g)];
-    if (blocks.length !== 1 || !content.trimEnd().endsWith('</变量更新>')) throw Object.assign(new Error('回复末尾需要一个完整变量更新块'), { kind: 'protocol' });
-    let operations;
-    try { operations = JSON.parse(blocks[0][1]); }
-    catch (error) { error.kind = 'json'; throw error; }
-    if (!Array.isArray(operations)) throw Object.assign(new Error('变量更新必须是JSON数组'), { kind: 'format' });
+    if (!blocks.length) throw Object.assign(new Error('回复需要至少一个完整的变量更新块'), { kind: 'protocol' });
+    const operations = [];
+    for (const block of blocks) {
+      let parsed;
+      try { parsed = JSON.parse(block[1]); }
+      catch (error) { error.kind = 'json'; throw error; }
+      if (!Array.isArray(parsed)) throw Object.assign(new Error('变量更新必须是JSON数组'), { kind: 'format' });
+      operations.push(...parsed);
+    }
     return { operations, block: JSON.stringify(operations) };
   }
 
@@ -147,7 +151,7 @@
       } else {
         const kind = error.kind || 'validation';
         const words = {
-          protocol: '回复需要在末尾保留一个完整的变量更新块',
+          protocol: '回复需要至少一个完整的变量更新块',
           json: '更新内容的格式有误，无法读取，请检查括号、引号和逗号',
           format: '更新内容需要写成操作列表，无法逐项读取',
           validation: '更新结果不符合角色的变量规则',

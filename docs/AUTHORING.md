@@ -59,6 +59,8 @@
 
 Zod 不能修复损坏的 `<变量更新>` JSON、非法 `op`、非法 JSON Pointer、缺失的操作目标或 AI 对 `_` / `$` 字段的修改；这些错误发生在 Schema 之前。无法唯一判断正确意图的类型、枚举、对象/数组结构或缺失字段也不得猜测。最终结果仍不合法时，本轮 AI 操作保持整组不提交。
 
+AI 回复中至少需要一个完整闭合的 `<变量更新>…</变量更新>` 块，位置不限。多个完整块按正文出现顺序解析，各块中的 JSON 数组展开为同一轮操作序列；任一完整块或操作无效时整轮不提交。完整块之外的未闭合标签片段不参与解析。
+
 `derive(variables, context)` 接收候选快照的副本，同步完成会影响派生结果的确定性规范化，再计算可由其他字段确定的派生值；不读取 DOM、SDK、存档或 MVU API。规范化同样必须确定、幂等且不猜测业务意图。
 
 `context` 包含 `source`、`round`、`replyId`：
@@ -235,23 +237,6 @@ MVU.remove(path);
 
 ## MMD 新页约束
 
-- 消息正文、功能栏及正则替换产生的可见 HTML 会先经过 worker 标签白名单，再经过 DOMPurify；实际可用范围取两者交集。白名单外的标签壳会被删除，但其中的文字通常保留。
-- worker 侧允许的标签如下；`style`、`script` 会被平台抽取并单独生效，不作为可见容器留在原位置：
-
-```text
-p b a div span h1 h2 h3 h4 h5 h6 ul li ol strong em br img pre font i button
-table th tr td input textarea label select option video script user summary
-details code blockquote hr del thead tbody s
-svg g path circle ellipse rect line polyline polygon text tspan defs use
-linearGradient radialGradient stop clipPath title style
-```
-
-- 常规布局优先使用 `div`、`span`、`p`、列表、表格、`details/summary` 和表单控件。`section`、`article`、`header`、`footer`、`main`、`nav`、`aside`、`fieldset`、`legend` 不在 worker 白名单内；需要这些语义时改用带自有 class 的 `div`，不能依赖标签壳保留。
-- `iframe`、`link`、`meta`、`base`、`form`、`object`、`embed` 会被删除。不要用 `form` 包裹输入控件，按钮逻辑由脚本绑定。
-- 模型正文中的 `<状态>`、`<面板>` 等中文尖括号标记会被当成标签剥掉；需要供正则匹配的协议标记统一使用 `[状态]...[/状态]` 这类方括号形式。真正要渲染的 HTML 不要包在 Markdown 反引号中，否则会显示成文本。
-- 作者自写的 `data-*`、`aria-*` 和 `role` 会被净化删除；自有节点用带项目前缀的 class/id，避免 `id="forms"`、`id="images"` 等与 `document` 属性冲突的名称。平台自己的 `[data-chat]`、`[data-slot]` 只读使用。
-- HTML 元素上的 `on*` 可能保留，但 SVG 内的 `on*` 会被删除；本项目仍统一在 `<script>` 中给 HTML 容器或按钮绑定事件。不要把业务逻辑塞进内联事件属性，属性值中的 `]>`、`-->`、`--!>` 或 `</script` 等片段还可能让整条属性消失。
-- 成品界面保持自包含：CSP 会阻止外部 `fetch`、外部字体和外部样式表。使用系统字体栈与内联 `<style>`；图片可使用 `https:`、`data:` 或 `blob:`。外链 HTTPS 脚本虽可能加载，但平台不会等待它完成，还会干扰后续 `ready` 订阅，因此常规作者实现只使用内联脚本。
 - 作者脚本在 DOM 建立前执行，顶层不得查询或写入 DOM。
 - 气泡内绑定只能在 `message:mount` 回调中同步取得引用；不得跨 `await` 或定时器后重新查询气泡。
 - `sdk.on` 只能在脚本体注册，不能嵌套在 `message:mount` 中。

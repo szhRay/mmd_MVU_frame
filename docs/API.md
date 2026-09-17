@@ -18,6 +18,8 @@
 - role 只会是 ai 或 user。
 - content 是事件提供的消息原文。
 
+`CARD_AUTHOR.status.render` 与 `CARD_AUTHOR.render` 可直接用 JavaScript 正则读取 `content`。这是作者代码内部的本轮正文解析，不是 CARD 运行时状态 API；不得据此累计跨轮剧情状态。模型输出写入界面时使用安全 DOM API，不直接赋给 `innerHTML`。
+
 ## CARD.messages.at
 
 ~~~js
@@ -37,15 +39,6 @@ const latestReply = CARD.messages.at(-1, 'ai');
 const latestUser = CARD.messages.at(-1, 'user');
 ~~~
 
-## CARD.yaml.stringify
-
-~~~js
-CARD.yaml.stringify(value);
-~~~
-
-把普通 JSON 数据转换成 YAML 字符串。只接受 null、字符串、布尔值、有限数字、数组和普通对象；不接受 Date、Map、Set、BigInt、函数或无限数。
-
-此方法只负责文本格式化，不保存或累计状态。
 
 ## 输入区
 
